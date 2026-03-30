@@ -14,7 +14,7 @@ import static org.junit.Assert.assertTrue;
 public class MainTest {
     @Test
     void testSearchTrue() {
-        FacultyMember[] array = new FacultyMember[2];
+        FacultyMember[] array = new FacultyMember[2]; //dummy array.
         array[0] = new FacultyMember("email1", "");
         array[1] = new FacultyMember("email2", "");
 

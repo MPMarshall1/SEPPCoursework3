@@ -1,6 +1,8 @@
 import java.util.Objects;
 
 public abstract class User {
+    //Abstract class from which FacultyMember inherits.
+
     private final String email;
     private String password;
 

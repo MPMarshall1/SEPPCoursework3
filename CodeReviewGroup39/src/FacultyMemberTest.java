@@ -10,6 +10,7 @@ import java.util.Scanner;
 
 public class FacultyMemberTest {
 
+    //Test equality function.
     @Test
     void positiveEqualityCheckTest() {
         FacultyMember member1 = new FacultyMember("a", "b");
@@ -45,6 +46,8 @@ public class FacultyMemberTest {
         assert !member1.equals(member2) : "Equality checks find false positives";
     }
 
+    //Test output of changing passwords.
+    //Uses redirected I/O to test against output to System.
     private InputStream originalIn;
     private PrintStream originalOut;
 
@@ -64,6 +67,7 @@ public class FacultyMemberTest {
     void testLoginWithPasswordChange() {
         FacultyMember member = new FacultyMember("email", "password");
 
+        //Set up test input/output.
         String simulatedInput = String.join("\n", "wrongpassword", "password", "Y", "newpassword") + "\n";
 
         ByteArrayInputStream testIn = new ByteArrayInputStream(simulatedInput.getBytes());
@@ -72,9 +76,11 @@ public class FacultyMemberTest {
         ByteArrayOutputStream testOut = new ByteArrayOutputStream();
         System.setOut(new PrintStream(testOut));
 
+        //Call functionality.
         Scanner scanner = new Scanner(System.in);
         member.login(scanner);
 
+        //Test effects and outputs.
         assert member.getPassword().equals("newpassword") : "Password not updated.";
 
         String output = testOut.toString();

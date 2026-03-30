@@ -8,6 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 public class SystemTest {
+    //Redirect I/O to fake input and capture output from System.
 
     private InputStream originalIn;
     private PrintStream originalOut;
@@ -26,6 +27,7 @@ public class SystemTest {
 
     @Test
     void testMSS() {
+        //Main success scenario.
         String simulatedInput = String.join("\n", "email", "wrongpassword", "password", "Y", "newpassword") + "\n";
 
         ByteArrayInputStream testIn = new ByteArrayInputStream(simulatedInput.getBytes());
@@ -38,6 +40,7 @@ public class SystemTest {
 
         String output = testOut.toString();
 
+        //Test against outputs.
         assert output.contains("Enter X at any time to exit.") : "Does not provide exit";
         assert output.contains("Enter email:") : "Does not prompt for email";
         assert output.contains("Enter password:") : "Does not prompt for password";
@@ -48,6 +51,7 @@ public class SystemTest {
 
     @Test
     void testTermination() {
+        //User terminates early.
         String simulatedInput = String.join("\n", "email", "X") + "\n";
 
         ByteArrayInputStream testIn = new ByteArrayInputStream(simulatedInput.getBytes());
@@ -60,9 +64,11 @@ public class SystemTest {
 
         String output = testOut.toString();
 
+        //Check inputs are there.
         assert output.contains("Enter X at any time to exit.") : "Does not provide exit";
         assert output.contains("Enter email:") : "Does not prompt for email";
         assert output.contains("Enter password:") : "Does not prompt for password";
+        //Check inputs are not there.
         assert !output.contains("Password incorrect") : "Does not flag wrong password";
         assert !output.contains("Logged in.") : "Does not confirm login";
         assert !output.contains("Would you like to change your password?") : "Does not prompt for password change";
@@ -70,6 +76,7 @@ public class SystemTest {
 
     @Test
     void testIncorrectEmail() {
+        //User mis-inputs email (twice).
         String simulatedInput = String.join("\n", "wrongemail", "anotherwrongemail", "X") + "\n";
 
         ByteArrayInputStream testIn = new ByteArrayInputStream(simulatedInput.getBytes());
@@ -82,9 +89,11 @@ public class SystemTest {
 
         String output = testOut.toString();
 
+        //Check inputs are there.
         assert output.contains("Enter X at any time to exit.") : "Does not provide exit";
         assert output.contains("Enter email:") : "Does not prompt for email";
         assert output.contains("That email is not associated with any faculty member. Enter email:") : "Does not prompt for email again";
+        //Check inputs are not there.
         assert !output.contains("Enter password:") : "Does prompt for password";
         assert !output.contains("Password incorrect") : "Does flag wrong password";
         assert !output.contains("Logged in.") : "Does confirm login";

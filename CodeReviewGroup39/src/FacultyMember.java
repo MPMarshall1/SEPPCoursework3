@@ -10,6 +10,7 @@ public class FacultyMember extends User{
 
     public void login(Scanner scanner) {
 
+        //Prompts for password until correct or user exits.
         System.out.println("Enter password:");
         String passwordInput = scanner.nextLine();
         if (passwordInput.equals("X")) {return;}
@@ -23,6 +24,7 @@ public class FacultyMember extends User{
         System.out.println("Logged in.");
         loginAttempts++;
 
+        //Upon the first login, the user should be prompted to change the password if they wish.
         if (loginAttempts==1) {
             changePassword(scanner);
         }
@@ -30,6 +32,7 @@ public class FacultyMember extends User{
     }
 
     private void changePassword(Scanner scanner) {
+        //Allows user to change password or forgo.
         System.out.println("Would you like to change your password? Y or N:");
         String choice = scanner.nextLine();
         if (choice.equals("X")) {return;}
@@ -51,6 +54,7 @@ public class FacultyMember extends User{
 
     @Override
     public boolean equals(Object o) {
+        //Equality test for members based on same email and password.
         if (this == o) return true;
         if (!(o instanceof FacultyMember other)) return false;
         return Objects.equals(this.getEmail(), other.getEmail()) &&

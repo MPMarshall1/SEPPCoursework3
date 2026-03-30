@@ -10,10 +10,13 @@ public class Main {
 
         FacultyMember[] facultyMembers = utility.registerFacultyMembers();
 
+        if (facultyMembers == null) {return;} //Stop if registration goes wrong.
+
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("Enter X at any time to exit.");
 
+        //Prompts user for email, before matching for associated member's password.
         System.out.println("Enter email:");
         String email = scanner.nextLine();
         if (email.equals("X")) {return;}
@@ -28,10 +31,12 @@ public class Main {
             member = search(facultyMembers, email);
         }
 
+        //move to specific member object.
         member.login(scanner);
     }
 
     public static FacultyMember search(FacultyMember[] array, String target){
+        //returns matching member from array or null if none match.
         for (FacultyMember facultyMember : array) {
             if (Objects.equals(facultyMember.getEmail(), target)) {
                 return facultyMember;
