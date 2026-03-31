@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 
 public class Event {
 
@@ -106,9 +107,23 @@ public class Event {
 
         for (Performance performance : performances) {
 
-            allReviews.addAll(performance.getReviewComments());
-        }
+            long perfID = performance.getPerformanceId();
 
+            // use iterators to go through both list at the same time
+            Iterator<Integer> ratingIterator = performance.getReviewRatings().iterator();
+            Iterator<String> commentIterator = performance.getReviewComments().iterator();
+
+            // while there is still reviews left
+            while (ratingIterator.hasNext() && commentIterator.hasNext()) {
+
+                int rating = ratingIterator.next();
+                String comment = commentIterator.next();
+
+                // combine the three parts
+                String review = perfID + " - " + rating + " - " + comment;
+                allReviews.add(review);
+            };
+        }
         return allReviews;
     }
 

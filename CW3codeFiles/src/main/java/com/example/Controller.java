@@ -2,9 +2,10 @@ package com.example;
 
 import java.util.Collection;
 
-public class Controller {
+public abstract class Controller {
 
     protected User currentUser;
+    protected View view = new TextUserInterface();
 
     public Controller() {
         this.currentUser = null;

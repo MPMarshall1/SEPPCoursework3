@@ -3,10 +3,7 @@ package com.example;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 public class EventPerformanceController extends Controller {
 
@@ -225,8 +222,85 @@ public class EventPerformanceController extends Controller {
     }
 
 
+    public void viewPerformance() {
 
+        // check user is logged in
+        if (checkCurrentUserIsGuest()) {
+            view.displayError("You must be logged in to view performance details");
+            return;
+        }
 
+        Performance selectedPerformance = null;
+
+        // validating performance ID
+        while (true) {
+
+            String input = view.getInput("Enter the performance ID to view or type 'X' to exit: ").trim();
+
+            if (input.equalsIgnoreCase("X")) {
+                return;
+            }
+
+            try {
+                long perfID = Long.parseLong(input);
+                selectedPerformance = getPerformanceByID(perfID);
+
+                // if perfID is valid, exit loop
+                if (selectedPerformance != null) {
+                    break;
+                }
+
+                else {
+                    view.displayError("No performance found with that ID. Please try again.");
+                }
+            }   catch (NumberFormatException e) {
+                view.displayError("Invalid format. Please try again.");
+            }
+        }
+
+        // putting together performance details
+        Event event = selectedPerformance.getEvent();
+        StringBuilder details = new StringBuilder();
+
+        details.append("Performance ID: ").append(selectedPerformance.getPerformanceId()).append("\n");
+        details.append("Event Title: ").append(event.getEventTitle()).append("\n");
+        details.append("Event Type: ").append(event.getEventType()).append("\n");
+
+        details.append("Organiser: ").append(event.getOrganiserName()).append("\n");
+
+        details.append("Date and Time: ").append(selectedPerformance.getStartDateTime()).append(" to ").append(selectedPerformance.getEndDateTime()).append("\n");
+        details.append("Venue: ").append(selectedPerformance.getVenueAddress()).append("\n");
+
+        // ticket availability
+        if (selectedPerformance.checkIfEventIsTicketed()) {
+            int ticketsRemaining = selectedPerformance.getNumTicketsTotal() - selectedPerformance.getNumTicketsSold();
+            details.append("Ticket Status: ").append(ticketsRemaining).append(" tickets remaining\n");
+            details.append("Ticket Price: £").append(selectedPerformance.getFinalTicketPrice()).append("\n");
+        }
+
+        else {
+            details.append("Ticket Status: Free / Non-Ticketed Event\n");
+        }
+
+        // getting average review rating
+        details.append("--- Reviews and Ratings ---\n");
+        details.append("Event Average Rating: ").append(event.getAverageRatingOfPerformances()).append("/5\n");
+
+        // list all reviews
+        Collection<String> allReviews = event.getAllPerformanceReviews();
+
+        if (allReviews == null || allReviews.isEmpty()) {
+            details.append("There are no reviews for this event\n");
+        }
+
+        else {
+            for (String review : allReviews) {
+                details.append("- ").append(review).append("\n");
+            }
+        }
+
+        view.displaySpecificPerformance(details.toString());
+    }
     private boolean checkIfSponsorshipPossible(Performance performance, int amount) {
 
         if (!(performance.checkIfEventIsTicketed())) {
@@ -287,3 +361,4 @@ public class EventPerformanceController extends Controller {
         return null;
     }
 }
+// TODO: fix complexity of view performance
