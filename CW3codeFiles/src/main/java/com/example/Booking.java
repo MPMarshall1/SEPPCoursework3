@@ -67,4 +67,8 @@ public class Booking {
     public BookingStatus getStatus() {
         return status;
     }
+
+    public Student getStudent() {
+        return student;
+    }
 }

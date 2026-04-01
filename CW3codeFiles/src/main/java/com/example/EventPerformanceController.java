@@ -1,11 +1,14 @@
 package com.example;
 
+import javax.xml.datatype.DatatypeFactory;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 
 public class EventPerformanceController extends Controller {
+
+    private PaymentSystem paymentSystem = new MockPaymentSystem();
 
     private long nextEventID;
     private long nextPerformanceID;
@@ -230,7 +233,24 @@ public class EventPerformanceController extends Controller {
             return;
         }
 
-        Performance selectedPerformance = null;
+        // get the required performance from required ID
+        Performance selectedPerformance = promptForValidPerformance();
+        if (selectedPerformance == null) {
+
+            // terminates use case if input = 'X'
+            return;
+        }
+
+        // builds the string containing the performance details
+        String details = buildPerformanceDetails(selectedPerformance);
+
+        view.displaySpecificPerformance(details);
+    }
+
+    // helpers for viewPerformance
+
+    // helper 1: handle input and get required performance
+    private Performance promptForValidPerformance() {
 
         // validating performance ID
         while (true) {
@@ -238,16 +258,16 @@ public class EventPerformanceController extends Controller {
             String input = view.getInput("Enter the performance ID to view or type 'X' to exit: ").trim();
 
             if (input.equalsIgnoreCase("X")) {
-                return;
+                return null;
             }
 
             try {
                 long perfID = Long.parseLong(input);
-                selectedPerformance = getPerformanceByID(perfID);
+                Performance selectedPerformance = getPerformanceByID(perfID);
 
                 // if perfID is valid, exit loop
                 if (selectedPerformance != null) {
-                    break;
+                    return selectedPerformance;
                 }
 
                 else {
@@ -257,6 +277,10 @@ public class EventPerformanceController extends Controller {
                 view.displayError("Invalid format. Please try again.");
             }
         }
+    }
+
+    // helper 2: put together performance details to view
+    private String buildPerformanceDetails(Performance selectedPerformance) {
 
         // putting together performance details
         Event event = selectedPerformance.getEvent();
@@ -268,7 +292,9 @@ public class EventPerformanceController extends Controller {
 
         details.append("Organiser: ").append(event.getOrganiserName()).append("\n");
 
-        details.append("Date and Time: ").append(selectedPerformance.getStartDateTime()).append(" to ").append(selectedPerformance.getEndDateTime()).append("\n");
+        details.append("Date and Time: ").append(selectedPerformance.getStartDateTime()).append(" to ")
+                .append(selectedPerformance.getEndDateTime()).append("\n");
+
         details.append("Venue: ").append(selectedPerformance.getVenueAddress()).append("\n");
 
         // ticket availability
@@ -299,8 +325,9 @@ public class EventPerformanceController extends Controller {
             }
         }
 
-        view.displaySpecificPerformance(details.toString());
+        return details.toString();
     }
+
     private boolean checkIfSponsorshipPossible(Performance performance, int amount) {
 
         if (!(performance.checkIfEventIsTicketed())) {
@@ -313,6 +340,129 @@ public class EventPerformanceController extends Controller {
             return false;
         }
 
+        return true;
+    }
+
+    public void cancelPerformance() {
+
+        Performance performanceToCancel = promptForCancelPerformance();
+
+        if (performanceToCancel == null) {
+            return;
+        }
+
+        // get cancellation message
+        String organiserMessage = promptForCancellationMessage();
+
+        // process refunds
+        if (performanceToCancel.hasActiveBookings()) {
+
+            boolean refundsSuccessful = processCancellationRefunds(performanceToCancel, organiserMessage);
+
+            if (!refundsSuccessful) {
+                view.displayError("There was an error with a refund. Performance was not cancelled");
+                return;
+            }
+
+            // if all refunds are successful, cancel the bookings
+            for (Booking booking : performanceToCancel.getBookings()) {
+
+                booking.cancelByProvider();
+            }
+        }
+        performanceToCancel.cancel();
+        view.displaySuccess("Cancellation Successful.");
+    }
+
+    // helpers for cancelPerformance
+
+    // helper 1: handles input and checks if ID is valid
+    private Performance promptForCancelPerformance() {
+
+        while (true) {
+
+            String input = view.getInput("Enter ID of performance to cancel or type 'X' to exit: ").trim();
+            if (input.equalsIgnoreCase("X")) {
+                return null;
+            }
+
+            try {
+                long perfID = Long.parseLong(input);
+                Performance performance = getPerformanceByID(perfID);
+
+                // check if performance exists
+                if (performance == null) {
+                    view.displayError("No performance found with that ID. Please try again.");
+                    continue;
+                }
+
+                // check if performance is owned by logged in EP
+                if (!performance.checkCreatedByEP(currentUser.getEmail())) {
+                    view.displayError("The performance with given ID does not belong to you.");
+                    continue;
+                }
+
+                // check if performance already happened
+                if (!performance.checkHasNotHappenedYet()) {
+                    view.displayError("Performance can't be cancelled as it has already happened.");
+                    continue;
+                }
+
+                return performance;
+            }   catch (NumberFormatException e) {
+                view.displayError("Invalid ID format. Please try again.");
+            }
+        }
+    }
+
+    // helper 2: checks for empty cancellation message
+    private String promptForCancellationMessage() {
+
+        while (true) {
+
+            String message = view.getInput("Enter a cancellation message for students: ").trim();
+
+            if (message.isEmpty()) {
+                view.displayError("Message cannot be empty. Please enter a message.");
+            }
+
+            else {
+                return message;
+            }
+        }
+    }
+
+    // helper 3: process the refunds
+    private boolean processCancellationRefunds(Performance performance, String organiserMessage) {
+
+        String eventTitle = performance.getEvent().getEventTitle();
+        String EPemail = currentUser.getEmail();
+
+        String bookingsDetails = performance.getBookingDetailsForRefund();
+
+        // parse the booking details
+        for (Booking booking : performance.getBookings()) {
+
+            // only refund active bookings
+            if (booking.getStatus() == BookingStatus.ACTIVE) {
+
+                Student student = booking.getStudent();
+                String studentEmail = student.getEmail();
+                int studentPhone = student.getPhoneNumber();
+                int numTickets = booking.getNumTickets();
+                double amountPaid = booking.getAmountPaid();
+
+                // process refund
+                boolean refundSuccessful = paymentSystem.processRefund(
+                        numTickets, eventTitle, studentEmail, studentPhone,
+                        EPemail, amountPaid, organiserMessage);
+
+                // if any refunds fail, terminate use case
+                if (!refundSuccessful) {
+                    return false;
+                }
+            }
+        }
         return true;
     }
 
@@ -361,4 +511,4 @@ public class EventPerformanceController extends Controller {
         return null;
     }
 }
-// TODO: fix complexity of view performance
+// TODO: implement sponsor performance
