@@ -32,17 +32,11 @@ public class EventPerformanceController extends Controller {
     public Event createEvent() {
 
         if (!checkCurrentUserIsEntertainmentProvider()) {
-            System.out.println("Only Entertainment Providers can create events.");
+            view.displayError("Only Entertainment Providers can create events.");
             return null;
         }
 
-        // scanner to ask about event details
-        Scanner sc = new Scanner(System.in);
-        System.out.println("Create new Event: ");
-
-        // get event title
-        System.out.print("Enter event title: ");
-        String title = sc.nextLine();
+        String title = view.getInput("Enter event title: ");
 
         // get ticket status
         boolean isTicketed = false;
@@ -50,22 +44,21 @@ public class EventPerformanceController extends Controller {
         // runs loop to validate input
         while (true) {
 
-            System.out.println("Is the event ticketed? (yes/no): ");
-            String ticketInput = sc.nextLine().trim().toLowerCase();
+            String ticketInput = view.getInput("Is the event ticketed? (yes/no): ").trim().toLowerCase();
 
             if (ticketInput.equalsIgnoreCase("yes")) {
                 isTicketed = true;
                 break;
             }
 
-            if (ticketInput.equalsIgnoreCase("no")) {
+            else if (ticketInput.equalsIgnoreCase("no")) {
                 isTicketed = false;
                 break;
             }
 
             // if input invalid keep prompting
             else {
-                System.out.println("Invalid input. Please enter 'yes' or 'no'. ");
+                view.displayError("Invalid input. Please enter 'yes' or 'no'. ");
             }
         }
 
@@ -74,11 +67,9 @@ public class EventPerformanceController extends Controller {
 
         while (true) {
 
-            System.out.println("Enter event type: (Music, Theatre, Dance, Movie, Sports): ");
-            String type = sc.nextLine().trim();
+            String type = view.getInput("Enter event type: (Music, Theatre, Dance, Movie, Sports): ").trim();
 
             try {
-
                 // try to convert input to EventType
                 eventType = EventType.valueOf(type);
                 break;  // if input is valid, break out of loop
@@ -86,7 +77,7 @@ public class EventPerformanceController extends Controller {
             } catch (IllegalArgumentException e) {
 
                 // if input invalid display message
-                System.out.println("Invalid event type. Please try again.");
+                view.displayError("Invalid event type. Please try again.");
             }
         }
 
@@ -95,10 +86,13 @@ public class EventPerformanceController extends Controller {
 
         // create event
         Event newEvent = new Event(organiser, this.nextEventID, title, eventType, isTicketed);
+
         this.addEvent(newEvent);
+        organiser.addEvent(newEvent);
+
         this.nextEventID ++; // increment eventID for next events
 
-        System.out.println("Successfully created event with ID: "+ newEvent.getEventID());
+        view.displaySuccess("Successfully created event with ID: "+ newEvent.getEventID());
         return newEvent;
     }
 
@@ -106,21 +100,18 @@ public class EventPerformanceController extends Controller {
 
         // precondition: makes sure the user is logged in
         if (checkCurrentUserIsGuest()) {
-            System.out.println("You must be logged in to search for performances");
+            view.displayError("You must be logged in to search for performances");
             return;
         }
 
-        Scanner sc = new Scanner(System.in);
-        System.out.println("Search Performances");
-
         // get required date from user
-        LocalDate searchDate = promptForValidDate(sc);
+        LocalDate searchDate = promptForValidDate();
 
         // find performances on required date
         List<Performance> foundPerformances = getPerformancesOnDate(searchDate);
 
         if (foundPerformances.isEmpty()) {
-            System.out.println("There are no performances on the provided date");
+            view.displayError("There are no performances on the provided date");
             return;
         }
 
@@ -135,20 +126,19 @@ public class EventPerformanceController extends Controller {
     // 4 helper methods for searchForPerformances
 
     // helper 1: handles date input validation
-    private LocalDate promptForValidDate(Scanner sc) {
+    private LocalDate promptForValidDate() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         while (true) {
 
-            System.out.println("Enter date of performances (dd/MM/yyyy): ");
-            String dateInput = sc.nextLine().trim();
+            String dateInput = view.getInput("Enter date of performances (dd/MM/yyyy): ").trim();
 
             try {
                 // try to parse input into Date object
                 return LocalDate.parse(dateInput, formatter);
 
             } catch (DateTimeParseException e) {
-                System.out.println("Invalid format. Please try again.");
+                view.displayError("Invalid format. Please try again.");
             }
         }
     }
@@ -208,20 +198,29 @@ public class EventPerformanceController extends Controller {
     private void printPerformances(List<Performance> performances, LocalDate searchDate) {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        System.out.println("Performances on " + searchDate.format(formatter) + ":");
+
+        List<String> formattedPerformances = new ArrayList<>();
+
+        formattedPerformances.add("Performances on " + searchDate.format(formatter) + ":");
+
         for (Performance performance : performances) {
 
-            System.out.println("ID: "+performance.getPerformanceId());
-            System.out.println("Event Name: "+performance.getEvent().getEventTitle());
-            System.out.println("Time: "+performance.getStartDateTime().toLocalTime() + " - "+performance.getEndDateTime().toLocalTime());
-            System.out.println("Venue: "+performance.getVenueAddress());
-            System.out.println("Entertainment Provider: "+performance.getEvent().getOrganiserName());
+            StringBuilder builder = new StringBuilder();
+
+            builder.append("ID: ").append(performance.getPerformanceId()).append("\n");
+            builder.append("Event Name: ").append(performance.getEvent().getEventTitle()).append("\n");
+            builder.append("Time: ").append(performance.getStartDateTime().toLocalTime())
+                    .append(" - ").append(performance.getEndDateTime().toLocalTime()).append("\n");
+            builder.append("Venue").append(performance.getVenueAddress()).append("\n");
+            builder.append("Entertainment Provider: ").append(performance.getEvent().getOrganiserName()).append("\n");
 
             // printing event review average
-            System.out.println("Event average rating: "+performance.getEvent().getAverageRatingOfPerformances());
+            builder.append("Event average rating: ").append(performance.getEvent().getAverageRatingOfPerformances()).append("\n");
 
-            System.out.println();
+            formattedPerformances.add(builder.toString());
         }
+
+        view.displayListofPerformances(formattedPerformances);
     }
 
 
@@ -328,20 +327,6 @@ public class EventPerformanceController extends Controller {
         return details.toString();
     }
 
-    private boolean checkIfSponsorshipPossible(Performance performance, int amount) {
-
-        if (!(performance.checkIfEventIsTicketed())) {
-            return false;
-        }
-
-        double perfTicketCost = performance.getFinalTicketPrice();
-
-        if (amount < 0 || amount > perfTicketCost) {
-            return false;
-        }
-
-        return true;
-    }
 
     public void cancelPerformance() {
 
@@ -467,15 +452,116 @@ public class EventPerformanceController extends Controller {
     }
 
 
-    public void addEvent(Event e) {
+    public void sponsorPerformance() {
+
+        Performance performanceToSponsor = promptForValidTicketedPerformance();
+
+        if (performanceToSponsor == null) {
+            // terminate use case
+            return;
+        }
+
+        double amount = promptForSponsorshipAmount(performanceToSponsor);
+
+        if (amount < 0) {
+            return;
+        }
+
+        performanceToSponsor.sponsor(amount);
+        view.displaySuccess("Sponsorship Successful!");
+    }
+
+    // helpers for sponsorPerformance
+
+    // helper 1: get performance ID
+    private Performance promptForValidTicketedPerformance() {
+
+        while (true) {
+
+            String IDinput = view.getInput("Enter performance ID to sponsor or type 'X' to exit: ").trim();
+
+            if (IDinput.equalsIgnoreCase("X")) {
+                return null;
+            }
+
+            try {
+
+                long perfID = Long.parseLong(IDinput);
+                Performance performance = getPerformanceByID(perfID);
+
+                // extension 1a: check if ID is correct
+                if (performance == null) {
+                    view.displayError("Performance with given number does not exist");
+                    continue;
+                }
+
+                // extension 1b: check if performance is ticketed
+                if (!performance.checkIfEventIsTicketed()) {
+
+                    view.displayError("The requested performance's event is non ticketed. It cannot be sponsored");
+                    return null;
+                }
+
+                return performance;
+
+            }   catch (NumberFormatException e) {
+                    view.displayError("Invalid ID format. Please try again.");
+            }
+        }
+    }
+
+    // helper 2: get sponsorship amount
+    private double promptForSponsorshipAmount(Performance performance) {
+
+        while (true) {
+
+            String amountInput = view.getInput("Enter the sponsorship amount or type 'X' to exit: ").trim();
+
+            if (amountInput.equalsIgnoreCase("X")) {
+                return -1.0;
+            }
+
+            try {
+
+                double amount = Double.parseDouble(amountInput);
+
+                // extension 3a
+                if (!checkIfSponsorshipPossible(performance, amount)) {
+                    continue;
+                }
+
+                return amount;
+            }   catch (NumberFormatException e) {
+                    view.displayError("The amount provided is invalid");
+            }
+        }
+    }
+
+    // changes 'amount' data type to double instead of int to match 'ticketPrice' variable in 'Performance' class
+    // helper 3: checks for valid sponsorship amount
+    private boolean checkIfSponsorshipPossible(Performance performance, double amount) {
+
+        double perfTicketCost = performance.getFinalTicketPrice();
+
+        if (amount < 0 || amount > perfTicketCost) {
+
+            view.displayError("The amount provided is invalid.");
+            return false;
+
+        }
+        return true;
+    }
+
+
+    private void addEvent(Event e) {
         allEvents.add(e);
     }
 
-    public void addPerformance(Performance p) {
+    private void addPerformance(Performance p) {
         allPerformances.add(p);
     }
 
-    public Event getEventByID(long eventID) {
+    private Event getEventByID(long eventID) {
 
         for (Event event : allEvents) {
 
@@ -487,7 +573,7 @@ public class EventPerformanceController extends Controller {
         return null;
     }
 
-    public Event getEventByTitle(String title) {
+    private Event getEventByTitle(String title) {
 
         for (Event event : allEvents) {
 
@@ -499,7 +585,7 @@ public class EventPerformanceController extends Controller {
         return null;
     }
 
-    public Performance getPerformanceByID(long performanceID) {
+    private Performance getPerformanceByID(long performanceID) {
 
         for (Performance performance : allPerformances) {
 
@@ -511,4 +597,3 @@ public class EventPerformanceController extends Controller {
         return null;
     }
 }
-// TODO: implement sponsor performance

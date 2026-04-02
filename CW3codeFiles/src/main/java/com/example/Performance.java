@@ -149,6 +149,10 @@ public class Performance {
     // getters
 
     public double getFinalTicketPrice() {
+
+        if (this.isSponsored) {
+            return this.ticketPrice - this.sponsoredAmount;
+        }
         return this.ticketPrice;
     }
 

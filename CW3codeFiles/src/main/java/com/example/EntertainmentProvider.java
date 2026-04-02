@@ -1,11 +1,16 @@
 package com.example;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 public class EntertainmentProvider extends User{
 
     private String orgName;
     private String businessNumber;
     private String name;
     private String description;
+
+    private Collection<Event> myEvents;
 
     public EntertainmentProvider(String email, String password, String orgName, String businessNumber, String name, String description) {
 
@@ -15,10 +20,13 @@ public class EntertainmentProvider extends User{
         this.businessNumber = businessNumber;
         this.name = name;
         this.description = description;
+
+        this.myEvents = new ArrayList<>();
     }
 
     public void addEvent(Event event) {
-        // TODO
+
+        this.myEvents.add(event);
     }
 
     // getters
@@ -36,5 +44,9 @@ public class EntertainmentProvider extends User{
 
     public String getDescription() {
         return description;
+    }
+
+    public Collection<Event> getMyEvents() {
+        return this.myEvents;
     }
 }

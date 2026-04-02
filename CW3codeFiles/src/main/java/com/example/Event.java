@@ -171,5 +171,16 @@ public class Event {
         return type;
     }
 
-    // TODO toString method
+    @Override
+    public String toString() {
+
+        return "Event Details:\n" +
+                "ID: " + this.eventID + "\n" +
+                "Title: " + this.title + "\n" +
+                "Type: " + this.type + "\n" +
+                "Ticketed: " + this.isTicketed + "\n" +
+                "Organiser Name: " + this.getOrganiserName() + "\n" +
+                "Organiser Email: " + this.getOrganiserEmail() + "\n" +
+                "Total Performances: " + this.performances.size() + "\n";
+    }
 }

@@ -1,5 +1,6 @@
 package com.example;
 
+import com.sun.source.tree.AssertTree;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -354,5 +355,19 @@ public class TestPerformance {
     public void testCheckCreatedByEP_ReturnFalse() {
 
         assertFalse(testPerformance.checkCreatedByEP("othername@gmail.com"), "Should return false when email doesn't match with organisers email");
+    }
+
+    // testing toString
+
+    @Test
+    public void testToString_containsMainInformation() {
+
+        String details = testPerformance.toString();
+
+        assertTrue(details.contains("Performance ID:"), "Should contain performance ID");
+        assertTrue(details.contains("Event:"), "Should contain event title");
+        assertTrue(details.contains("Date:"), "Should contain performance start and end times");
+        assertTrue(details.contains("Venue:"), "Should contain venue name");
+        assertTrue(details.contains("Price: £10.0"), "Should contain ticket price");
     }
 }

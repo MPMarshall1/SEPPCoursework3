@@ -1,11 +1,16 @@
 package com.example;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 public class Student extends User{
 
     private String name;
     private int phoneNumber;
 
     private StudentPreferences preferences;
+
+    private Collection<Booking> myBookings;
 
     public Student(String email, String password, String name, int phoneNumber) {
 
@@ -14,7 +19,13 @@ public class Student extends User{
 
         this.name = name;
         this.phoneNumber = phoneNumber;
+
         this.preferences = new StudentPreferences();
+        this.myBookings = new ArrayList<>();
+    }
+
+    public void addBooking(Booking booking) {
+        this.myBookings.add(booking);
     }
 
     public String getName() {
@@ -29,5 +40,7 @@ public class Student extends User{
         return this.preferences;
     }
 
-    // TODO: implement addBooking method
+    public Collection<Booking> getMyBookings() {
+        return this.myBookings;
+    }
 }
