@@ -1,7 +1,7 @@
 package com.example;
 
-import javax.xml.datatype.DatatypeFactory;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -12,6 +12,7 @@ public class EventPerformanceController extends Controller {
 
     private long nextEventID;
     private long nextPerformanceID;
+    private long nextBookingID;
 
     private Collection<Event> allEvents;
     private Collection<Performance> allPerformances;
@@ -23,6 +24,20 @@ public class EventPerformanceController extends Controller {
         // initial ID numbers
         this.nextEventID = 1;
         this.nextPerformanceID = 1;
+        this.nextBookingID = 1;
+
+        this.allEvents = new ArrayList<>();
+        this.allPerformances = new ArrayList<>();
+    }
+
+    // constructor allowing injection of a custom View
+    public EventPerformanceController(View view) {
+
+        super(view);
+
+        this.nextEventID = 1;
+        this.nextPerformanceID = 1;
+        this.nextBookingID = 1;
 
         this.allEvents = new ArrayList<>();
         this.allPerformances = new ArrayList<>();
@@ -330,6 +345,12 @@ public class EventPerformanceController extends Controller {
 
     public void cancelPerformance() {
 
+        // precondition: must be an entertainment provider
+        if (!(this.currentUser instanceof EntertainmentProvider)) {
+            view.displayError("Only entertainment providers can cancel performances.");
+            return;
+        }
+
         Performance performanceToCancel = promptForCancelPerformance();
 
         if (performanceToCancel == null) {
@@ -454,6 +475,12 @@ public class EventPerformanceController extends Controller {
 
     public void sponsorPerformance() {
 
+        // precondition: must be logged in as an entertainment provider
+        if (!(this.currentUser instanceof EntertainmentProvider)) {
+            view.displayError("Only entertainment providers can sponsor performances.");
+            return;
+        }
+
         Performance performanceToSponsor = promptForValidTicketedPerformance();
 
         if (performanceToSponsor == null) {
@@ -492,7 +519,7 @@ public class EventPerformanceController extends Controller {
                 // extension 1a: check if ID is correct
                 if (performance == null) {
                     view.displayError("Performance with given number does not exist");
-                    continue;
+                    return null;
                 }
 
                 // extension 1b: check if performance is ticketed
@@ -550,6 +577,479 @@ public class EventPerformanceController extends Controller {
 
         }
         return true;
+    }
+
+
+    public Performance addPerformance() {
+
+        // precondition: must be an entertainment provider
+        if (!checkCurrentUserIsEntertainmentProvider()) {
+            view.displayError("Only Entertainment Providers can add performances.");
+            return null;
+        }
+
+        // get and validate the event ID
+        Performance newPerformance = null;
+
+        while (true) {
+
+            String eventIDInput = view.getInput(
+                    "Enter event ID to add performance to or type 'X' to exit: ").trim();
+
+            if (eventIDInput.equalsIgnoreCase("X")) {
+                return null;
+            }
+
+            try {
+                long eventID = Long.parseLong(eventIDInput);
+                Event event = getEventByID(eventID);
+
+                if (event == null) {
+                    view.displayError("No event found with that ID. Please try again.");
+                    continue;
+                }
+
+                // check the event belongs to the current EP
+                if (!event.getOrganiserEmail().equals(currentUser.getEmail())) {
+                    view.displayError("That event does not belong to you.");
+                    continue;
+                }
+
+                // collect performance details
+                LocalDateTime startDateTime = promptForValidDateTime(
+                        "Enter performance start date/time (dd/MM/yyyy HH:mm): ");
+                LocalDateTime endDateTime   = promptForValidDateTime(
+                        "Enter performance end date/time   (dd/MM/yyyy HH:mm): ");
+
+                if (endDateTime.isBefore(startDateTime) || endDateTime.isEqual(startDateTime)) {
+                    view.displayError("End date/time must be after start date/time.");
+                    continue;
+                }
+
+                String performersInput = view.getInput(
+                        "Enter performer names (comma-separated): ").trim();
+                List<String> performerNames = new ArrayList<>();
+
+                for (String name : performersInput.split(",")) {
+                    String trimmed = name.trim();
+                    if (!trimmed.isEmpty()) {
+                        performerNames.add(trimmed);
+                    }
+                }
+
+                String venueAddress = view.getInput("Enter venue address: ").trim();
+
+                int venueCapacity = promptForPositiveInt("Enter venue capacity: ");
+
+                boolean venueOutdoors      = promptForYesNo("Is the venue outdoors? (yes/no): ");
+                boolean venueAllowsSmoking = promptForYesNo("Does the venue allow smoking? (yes/no): ");
+
+                // ticket-specific details only needed for ticketed events
+                int    numTicketsTotal = 0;
+                double ticketPrice     = 0.0;
+
+                if (event.getIsTicketed()) {
+                    numTicketsTotal = promptForPositiveInt("Enter total number of tickets: ");
+                    ticketPrice     = promptForPositiveDouble("Enter ticket price (£): ");
+                }
+
+                // create the performance via the event
+                newPerformance = event.createPerformance(
+                        this.nextPerformanceID, startDateTime, endDateTime,
+                        performerNames, venueAddress, venueCapacity,
+                        venueOutdoors, venueAllowsSmoking, numTicketsTotal, ticketPrice);
+
+                addPerformance(newPerformance);
+                this.nextPerformanceID++;
+
+                view.displaySuccess("Performance added successfully with ID: "
+                        + newPerformance.getPerformanceId());
+                return newPerformance;
+
+            } catch (NumberFormatException e) {
+                view.displayError("Invalid event ID format. Please try again.");
+            }
+        }
+    }
+
+    // helpers for addPerformance
+
+    // helper: prompt for a valid date-time in dd/MM/yyyy HH:mm format
+    private LocalDateTime promptForValidDateTime(String prompt) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        while (true) {
+
+            String input = view.getInput(prompt).trim();
+
+            try {
+                return LocalDateTime.parse(input, formatter);
+
+            } catch (DateTimeParseException e) {
+                view.displayError("Invalid date/time format. Please use dd/MM/yyyy HH:mm.");
+            }
+        }
+    }
+
+    // helper: prompt for a yes/no answer, returning the corresponding boolean
+    private boolean promptForYesNo(String prompt) {
+
+        while (true) {
+
+            String input = view.getInput(prompt).trim().toLowerCase();
+
+            if (input.equals("yes")) {
+                return true;
+            } else if (input.equals("no")) {
+                return false;
+            } else {
+                view.displayError("Please enter 'yes' or 'no'.");
+            }
+        }
+    }
+
+    // helper: prompt for a positive integer
+    private int promptForPositiveInt(String prompt) {
+
+        while (true) {
+
+            String input = view.getInput(prompt).trim();
+
+            try {
+                int value = Integer.parseInt(input);
+
+                if (value > 0) {
+                    return value;
+                }
+
+                view.displayError("Value must be greater than zero. Please try again.");
+
+            } catch (NumberFormatException e) {
+                view.displayError("Invalid number format. Please try again.");
+            }
+        }
+    }
+
+    // helper: prompt for a positive double
+    private double promptForPositiveDouble(String prompt) {
+
+        while (true) {
+
+            String input = view.getInput(prompt).trim();
+
+            try {
+                double value = Double.parseDouble(input);
+
+                if (value > 0) {
+                    return value;
+                }
+
+                view.displayError("Value must be greater than zero. Please try again.");
+
+            } catch (NumberFormatException e) {
+                view.displayError("Invalid number format. Please try again.");
+            }
+        }
+    }
+
+    public Booking bookPerformance() {
+
+        // precondition: must be a student
+        if (!checkCurrentUserIsStudent()) {
+            view.displayError("Only students can book performances.");
+            return null;
+        }
+
+        // get and validate performance ID
+        Performance performance = null;
+
+        while (true) {
+
+            String input = view.getInput(
+                    "Enter performance ID to book or type 'X' to exit: ").trim();
+
+            if (input.equalsIgnoreCase("X")) {
+                return null;
+            }
+
+            try {
+                long perfID = Long.parseLong(input);
+                performance = getPerformanceByID(perfID);
+
+                if (performance == null) {
+                    view.displayError("No performance found with that ID. Please try again.");
+                    continue;
+                }
+
+                // extension 1a: check performance has not been cancelled
+                if (performance.getStatus() == PerformanceStatus.CANCELLED) {
+                    view.displayError("That performance has been cancelled.");
+                    continue;
+                }
+
+                break;
+
+            } catch (NumberFormatException e) {
+                view.displayError("Invalid ID format. Please try again.");
+            }
+        }
+
+        Student student  = (Student) this.currentUser;
+        Booking booking;
+
+        if (performance.checkIfEventIsTicketed()) {
+
+            // get number of tickets
+            int numTickets = 0;
+
+            while (true) {
+
+                String numInput = view.getInput("Enter number of tickets: ").trim();
+
+                if (numInput.equalsIgnoreCase("X")) {
+                    return null;
+                }
+
+                try {
+                    numTickets = Integer.parseInt(numInput);
+
+                    if (numTickets <= 0) {
+                        view.displayError("Number of tickets must be positive.");
+                        continue;
+                    }
+
+                    // extension 2a: check enough tickets are available
+                    if (!performance.checkIfTicketsLeft(numTickets)) {
+                        view.displayError("Not enough tickets available. "
+                                + "Remaining: "
+                                + (performance.getNumTicketsTotal()
+                                   - performance.getNumTicketsSold()));
+                        continue;
+                    }
+
+                    break;
+
+                } catch (NumberFormatException e) {
+                    view.displayError("Invalid number format. Please try again.");
+                }
+            }
+
+            double totalCost     = numTickets * performance.getFinalTicketPrice();
+            String eventTitle    = performance.getEvent().getEventTitle();
+            String studentEmail  = student.getEmail();
+            int    studentPhone  = student.getPhoneNumber();
+            String epEmail       = performance.getOrganiserEmail();
+
+            boolean paymentSuccess = paymentSystem.processPayment(
+                    numTickets, eventTitle, studentEmail, studentPhone, epEmail, totalCost);
+
+            if (!paymentSuccess) {
+                // record the failed booking for audit purposes
+                booking = new Booking(student, performance, this.nextBookingID,
+                        numTickets, 0.0, LocalDateTime.now());
+                booking.cancelPaymentFailed();
+                this.nextBookingID++;
+                view.displayError("Payment failed. Booking was not completed.");
+                return null;
+            }
+
+            booking = new Booking(student, performance, this.nextBookingID,
+                    numTickets, totalCost, LocalDateTime.now());
+
+        } else {
+            // non-ticketed: register attendance without payment
+            booking = new Booking(student, performance, this.nextBookingID,
+                    0, 0.0, LocalDateTime.now());
+        }
+
+        this.nextBookingID++;
+        performance.addBooking(booking);
+        student.addBooking(booking);
+
+        view.displayBookingRecord(booking.generateBookingRecord());
+        return booking;
+    }
+
+    public void cancelBooking() {
+
+        // precondition: must be a student
+        if (!checkCurrentUserIsStudent()) {
+            view.displayError("Only students can cancel bookings.");
+            return;
+        }
+
+        Student student = (Student) this.currentUser;
+        Collection<Booking> myBookings = student.getMyBookings();
+
+        // collect only active bookings for display
+        List<Booking> activeBookings = new ArrayList<>();
+
+        for (Booking b : myBookings) {
+
+            if (b.getStatus() == BookingStatus.ACTIVE) {
+                activeBookings.add(b);
+            }
+        }
+
+        if (activeBookings.isEmpty()) {
+            view.displayError("You have no active bookings to cancel.");
+            return;
+        }
+
+        // display the student's active bookings
+        view.displaySuccess("Your active bookings:");
+
+        for (Booking b : activeBookings) {
+            view.displaySuccess(b.generateBookingRecord());
+        }
+
+        // get and validate the booking number to cancel
+        while (true) {
+
+            String input = view.getInput(
+                    "Enter booking number to cancel or type 'X' to exit: ").trim();
+
+            if (input.equalsIgnoreCase("X")) {
+                return;
+            }
+
+            try {
+                long bookingNum = Long.parseLong(input);
+                Booking target  = null;
+
+                for (Booking b : activeBookings) {
+
+                    if (b.getBookingNumber() == bookingNum) {
+                        target = b;
+                        break;
+                    }
+                }
+
+                if (target == null) {
+                    view.displayError("No active booking found with that number. Please try again.");
+                    continue;
+                }
+
+                // process refund if the event was ticketed
+                if (target.getPerformance().checkIfEventIsTicketed()
+                        && target.getAmountPaid() > 0) {
+
+                    Performance perf       = target.getPerformance();
+                    String      eventTitle = perf.getEvent().getEventTitle();
+                    String      epEmail    = perf.getOrganiserEmail();
+
+                    boolean refundSuccess = paymentSystem.processRefund(
+                            target.getNumTickets(), eventTitle,
+                            student.getEmail(), student.getPhoneNumber(),
+                            epEmail, target.getAmountPaid(), "");
+
+                    if (!refundSuccess) {
+                        view.displayError("Refund processing failed. Booking was not cancelled.");
+                        return;
+                    }
+                }
+
+                target.cancelbyStudent();
+                view.displaySuccess("Booking " + bookingNum + " cancelled successfully.");
+                return;
+
+            } catch (NumberFormatException e) {
+                view.displayError("Invalid booking number format. Please try again.");
+            }
+        }
+    }
+
+
+    public void reviewPerformance() {
+
+        // precondition: must be a student
+        if (!checkCurrentUserIsStudent()) {
+            view.displayError("Only students can review performances.");
+            return;
+        }
+
+        // get and validate the performance ID
+        Performance performance = null;
+
+        while (true) {
+
+            String input = view.getInput(
+                    "Enter performance ID to review or type 'X' to exit: ").trim();
+
+            if (input.equalsIgnoreCase("X")) {
+                return;
+            }
+
+            try {
+                long perfID = Long.parseLong(input);
+                performance = getPerformanceByID(perfID);
+
+                if (performance == null) {
+                    view.displayError("No performance found with that ID. Please try again.");
+                    continue;
+                }
+
+                break;
+
+            } catch (NumberFormatException e) {
+                view.displayError("Invalid ID format. Please try again.");
+            }
+        }
+
+        // check the student has (or had) a booking for this performance
+        Student student = (Student) this.currentUser;
+        boolean hasBooking = false;
+
+        for (Booking b : student.getMyBookings()) {
+
+            if (b.getPerformance().getPerformanceId() == performance.getPerformanceId()) {
+                hasBooking = true;
+                break;
+            }
+        }
+
+        if (!hasBooking) {
+            view.displayError("You can only review performances you have booked.");
+            return;
+        }
+
+        // get rating (1–5)
+        int rating = 0;
+
+        while (true) {
+
+            String ratingInput = view.getInput("Enter rating (1-5): ").trim();
+
+            try {
+                rating = Integer.parseInt(ratingInput);
+
+                if (rating >= 1 && rating <= 5) {
+                    break;
+                }
+
+                view.displayError("Rating must be between 1 and 5.");
+
+            } catch (NumberFormatException e) {
+                view.displayError("Invalid input. Please enter a number between 1 and 5.");
+            }
+        }
+
+        // get written comment
+        String comment = "";
+
+        while (true) {
+
+            comment = view.getInput("Enter your review comment: ").trim();
+
+            if (comment.isEmpty()) {
+                view.displayError("Review comment cannot be empty.");
+            } else {
+                break;
+            }
+        }
+
+        performance.review(rating, comment);
+        view.displaySuccess("Review submitted successfully. Thank you for your feedback!");
     }
 
 

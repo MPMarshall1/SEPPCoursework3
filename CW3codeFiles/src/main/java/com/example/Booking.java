@@ -71,4 +71,12 @@ public class Booking {
     public Student getStudent() {
         return student;
     }
+
+    public long getBookingNumber() {
+        return bookingNumber;
+    }
+
+    public Performance getPerformance() {
+        return performance;
+    }
 }
