@@ -1,4 +1,4 @@
-package com.example;
+package external;
 
 /**
  * A mock implementation of {@link PaymentSystem} for testing purposes.
