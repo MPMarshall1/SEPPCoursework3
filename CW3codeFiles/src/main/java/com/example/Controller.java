@@ -11,6 +11,20 @@ public abstract class Controller {
         this.currentUser = null;
     }
 
+    // constructor allowing injection of a custom View (e.g. a mock for testing)
+    public Controller(View view) {
+        this.currentUser = null;
+        this.view = view;
+    }
+
+    protected User getCurrentUser() {
+        return this.currentUser;
+    }
+
+    protected void setCurrentUser(User user) {
+        this.currentUser = user;
+    }
+
     protected boolean checkCurrentUserIsGuest() {
 
         return this.currentUser == null;
