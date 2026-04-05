@@ -339,7 +339,7 @@ public class EventPerformanceController extends Controller {
     public void cancelPerformance() {
 
         // precondition: must be an entertainment provider
-        if (!(this.currentUser instanceof EntertainmentProvider)) {
+        if (!(userController.currentUser instanceof EntertainmentProvider)) {
             view.displayError("Only entertainment providers can cancel performances.");
             return;
         }
@@ -396,7 +396,7 @@ public class EventPerformanceController extends Controller {
                 }
 
                 // check if performance is owned by logged in EP
-                if (!performance.checkCreatedByEP(currentUser.getEmail())) {
+                if (!performance.checkCreatedByEP(userController.currentUser.getEmail())) {
                     view.displayError("The performance with given ID does not belong to you.");
                     continue;
                 }
@@ -433,7 +433,7 @@ public class EventPerformanceController extends Controller {
     private boolean processCancellationRefunds(Performance performance, String organiserMessage) {
 
         String eventTitle = performance.getEvent().getEventTitle();
-        String EPemail = currentUser.getEmail();
+        String EPemail = userController.currentUser.getEmail();
 
         String bookingsDetails = performance.getBookingDetailsForRefund();
 
@@ -479,8 +479,8 @@ public class EventPerformanceController extends Controller {
     public void sponsorPerformance() {
 
         // precondition: must be logged in as an entertainment provider
-        if (!(this.currentUser instanceof EntertainmentProvider)) {
-            view.displayError("Only entertainment providers can sponsor performances.");
+        if (!(userController.currentUser instanceof AdminStaff)) {
+            view.displayError("Only admins can sponsor performances.");
             return;
         }
 
@@ -785,5 +785,9 @@ public class EventPerformanceController extends Controller {
             }
         }
         return null;
+    }
+
+    public Collection<Performance> getAllPerformances() {
+        return allPerformances;
     }
 }

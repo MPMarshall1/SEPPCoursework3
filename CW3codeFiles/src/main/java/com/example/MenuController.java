@@ -116,7 +116,8 @@ public class MenuController extends Controller {
                     userController.editPreferences();
                     return true;
                 case StudentMenuOptions.BOOK_EVENT:
-                    bookingController.bookPerformance();
+                    allPerformance = eventPerformanceController.getAllPerformances();
+                    bookingController.bookPerformance(allPerformance);
                     return true;
                 case StudentMenuOptions.CANCEL_BOOKING:
                     bookingController.cancelBooking();

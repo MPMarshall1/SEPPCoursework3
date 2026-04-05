@@ -11,7 +11,7 @@ public class BookingController extends Controller {
     private Collection<Performance> allPerformances;
     PaymentSystem paymentSystem = new MockPaymentSystem();
 
-    private long nextBookingID;
+    private long nextBookingID = 1;
 
     UserController userController;
 
@@ -32,16 +32,18 @@ public class BookingController extends Controller {
         this.userController = userController;
     }
 
-    public Booking bookPerformance() {
+    public Booking bookPerformance(Collection<Performance> performanceList) {
 
         // precondition: must be a student
-        if (!checkCurrentUserIsStudent()) {
+        if (!userController.checkCurrentUserIsStudent()) {
             view.displayError("Only students can book performances.");
             return null;
         }
 
         // get and validate performance ID
         Performance performance = null;
+
+        this.allPerformances = performanceList;
 
         while (true) {
 
@@ -145,6 +147,7 @@ public class BookingController extends Controller {
         this.nextBookingID++;
         performance.addBooking(booking);
         student.addBooking(booking);
+        allBookings.add(booking);
 
         view.displayBookingRecord(booking.generateBookingRecord());
         return booking;
@@ -153,7 +156,7 @@ public class BookingController extends Controller {
     public void reviewPerformance() {
 
         // precondition: must be a student
-        if (!checkCurrentUserIsStudent()) {
+        if (!userController.checkCurrentUserIsStudent()) {
             view.displayError("Only students can review performances.");
             return;
         }
@@ -328,7 +331,6 @@ public class BookingController extends Controller {
     private Performance getPerformanceByID(long performanceID) {
 
         for (Performance performance : allPerformances) {
-
             if (performance.getPerformanceId() == performanceID) {
 
                 return performance;
