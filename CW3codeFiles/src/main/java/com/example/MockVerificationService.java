@@ -1,4 +1,4 @@
-package external;
+package com.example;
 
 /**
  * A mock Verification Service Provider implementation for testing.

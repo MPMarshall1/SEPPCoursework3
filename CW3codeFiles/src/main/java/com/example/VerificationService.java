@@ -1,4 +1,4 @@
-package external;
+package com.example;
 
 /**
  * API for interacting with a Verification Service, which checks if an Entertainment Provider is legitimate.

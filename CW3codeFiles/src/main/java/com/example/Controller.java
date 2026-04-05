@@ -6,6 +6,8 @@ public abstract class Controller {
 
     protected User currentUser;
     protected View view = new TextUserInterface();
+    protected PaymentSystem paymentSystem = new MockPaymentSystem();
+    protected VerificationService verificationService = new MockVerificationService();
 
     public Controller() {
         this.currentUser = null;

@@ -92,11 +92,14 @@ public class UserController extends Controller {
             return null;
         }
 
-        String orgName       = view.getInput("Enter organisation name: ").trim();
+        String orgName        = view.getInput("Enter organisation name: ").trim();
+
         String businessNumber = view.getInput("Enter business registration number: ").trim();
-        String repName       = view.getInput("Enter representative name: ").trim();
-        String description   = view.getInput("Enter organisation description: ").trim();
-        String email         = view.getInput("Enter email address: ").trim();
+        if (!verificationService.verifyEntertainmentProvider(businessNumber)) {return null;}
+
+        String repName        = view.getInput("Enter representative name: ").trim();
+        String description    = view.getInput("Enter organisation description: ").trim();
+        String email          = view.getInput("Enter email address: ").trim();
 
         // extension 1a: check email is not already in use
         for (User existing : allUsers) {
